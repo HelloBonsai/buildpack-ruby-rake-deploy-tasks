@@ -3,19 +3,27 @@
 set -e            # fail fast
 set -o pipefail   # don't ignore exit codes when piping output
 
-# Configure directories
 build_dir=$1
 cache_dir=$2
 env_dir=$3
 
-blacklist_regex=${3:-'^(PATH|GIT_DIR|CPATH|CPPATH|LD_PRELOAD|LIBRARY_PATH)$'}
-if [ -d "$env_dir" ]; then
-  for e in $(ls $env_dir); do
-    echo "$e" | grep -qvE "$blacklist_regex" &&
+cd $build_dir
+
+# This function loads the Heroku settings variables from the files in
+# `env_dir` and sets the up as environment variables.
+export_env_dir() {
+  whitelist_regex=${2:-''}
+  blacklist_regex=${3:-'^(PATH|GIT_DIR|CPATH|CPPATH|LD_PRELOAD|LIBRARY_PATH)$'}
+  if [ -d "$env_dir" ]; then
+    for e in $(ls $env_dir); do
+      echo "$e" | grep -E "$whitelist_regex" | grep -qvE "$blacklist_regex" &&
       export "$e=$(cat $env_dir/$e)"
-    :
-  done
-fi
+      :
+    done
+  fi
+}
+
+export_env_dir
 
 if [ -z "$DEPLOY_TASKS" ]; then
   echo "DEPLOY_TASKS has not been set"
